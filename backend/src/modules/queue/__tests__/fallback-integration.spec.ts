@@ -236,7 +236,7 @@ describe('Queue Fallback Integration', () => {
         throw new Error('Simulated failure');
       });
 
-      // const _job = await queue.add('failing-job', { data: 'test' });
+      await queue.add('failing-job', { data: 'test' });
 
       // Wait for failure
       await new Promise((resolve) => setTimeout(resolve, 500));

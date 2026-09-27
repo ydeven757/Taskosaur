@@ -16,6 +16,13 @@ import {
 import validator from "validator";
 
 // Utility functions for validation
+function getHeaderString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.join(",");
+  }
+  return typeof value === "string" ? value : "";
+}
+
 function isValidUUID(id: string) {
   return validator.isUUID(id, 4);
 }
@@ -160,7 +167,7 @@ export const workspaceApi = {
       const response = await api.delete(`/workspaces/${workspaceId}`);
 
       // Handle different response types
-      const contentType = response.headers?.["content-type"] || "";
+      const contentType = getHeaderString(response.headers?.["content-type"]);
       const status = response.status;
 
       if (status === 204 || status === 200) {
@@ -250,7 +257,7 @@ export const workspaceApi = {
       );
 
       // Handle different response types
-      const contentType = response.headers?.["content-type"] || "";
+      const contentType = getHeaderString(response.headers?.["content-type"]);
       const status = response.status;
 
       if (status === 204 || status === 200) {
@@ -380,7 +387,7 @@ export const workspaceApi = {
       const response = await api.patch(`/workspaces/archive/${workspaceId}`);
 
       // Handle different response types
-      const contentType = response.headers?.["content-type"] || "";
+      const contentType = getHeaderString(response.headers?.["content-type"]);
       const status = response.status;
 
       if (status === 204 || status === 200) {

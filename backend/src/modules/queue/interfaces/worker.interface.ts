@@ -3,7 +3,7 @@ import { IJob } from './job.interface';
 /**
  * Worker processor function type
  */
-export type WorkerProcessor<T = any> = (job: IJob<T>) => Promise<any>;
+export type WorkerProcessor<T = any> = (job: IJob<T>) => unknown;
 
 /**
  * Generic worker interface that all queue adapters must implement

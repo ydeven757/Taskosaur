@@ -17,6 +17,14 @@ function isValidUUID(id: string) {
   return validator.isUUID(id, 4);
 }
 
+
+function getHeaderString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.join(",");
+  }
+  return typeof value === "string" ? value : "";
+}
+
 function sanitizeSlug(slug: string): string {
   if (!slug || typeof slug !== 'string') {
     throw new Error('Invalid slug: must be a non-empty string');
@@ -154,7 +162,7 @@ export const projectApi = {
       const response = await api.delete(`/projects/${encodeURIComponent(projectId)}`);
 
       // Handle different response types
-      const contentType = response.headers?.["content-type"] || "";
+      const contentType = getHeaderString(response.headers?.["content-type"]);
       const status = response.status;
 
       if (status === 204 || status === 200) {
@@ -308,7 +316,7 @@ export const projectApi = {
       );
 
       // Handle different response types
-      const contentType = response.headers?.["content-type"] || "";
+      const contentType = getHeaderString(response.headers?.["content-type"]);
       const status = response.status;
 
       if (status === 204 || status === 200) {
@@ -414,7 +422,7 @@ export const projectApi = {
       const response = await api.patch(`/projects/archive/${encodeURIComponent(projectId)}`);
 
       // Handle different response types
-      const contentType = response.headers?.["content-type"] || "";
+      const contentType = getHeaderString(response.headers?.["content-type"]);
       const status = response.status;
 
       if (status === 204 || status === 200) {

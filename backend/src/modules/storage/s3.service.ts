@@ -22,16 +22,31 @@ export class S3Service {
     const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
     const secretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
     const region = this.configService.get<string>('AWS_REGION');
-    this.bucketName = this.configService.get<string>('AWS_BUCKET_NAME')!;
+    this.bucketName = this.configService.get<string>('AWS_BUCKET_NAME') || '';
+    const s3ExplicitlyEnabled = this.configService.get<string>('STORAGE_DRIVER') === 's3';
 
-    this.logger.log(`Initializing S3 client for bucket: ${this.bucketName}`);
+    if (s3ExplicitlyEnabled && (!this.bucketName || !accessKeyId || !secretAccessKey || !region)) {
+      throw new Error(
+        'S3 storage is enabled but AWS_BUCKET_NAME, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, or AWS_REGION is missing',
+      );
+    }
+
+    this.logger.log(
+      this.bucketName
+        ? `Initializing S3 client for bucket: ${this.bucketName}`
+        : 'Initializing S3 client without bucket; local storage fallback may be used',
+    );
 
     this.s3Client = new S3Client({
       region: region || 'ap-south-1',
-      credentials: {
-        accessKeyId: accessKeyId!,
-        secretAccessKey: secretAccessKey!,
-      },
+      ...(accessKeyId && secretAccessKey
+        ? {
+            credentials: {
+              accessKeyId,
+              secretAccessKey,
+            },
+          }
+        : {}),
     });
   }
 

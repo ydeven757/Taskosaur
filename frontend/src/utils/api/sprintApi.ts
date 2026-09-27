@@ -27,6 +27,13 @@ function sanitizeSlug(slug: string): string {
   return encodeURIComponent(slug);
 }
 
+function getHeaderString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.join(",");
+  }
+  return typeof value === "string" ? value : "";
+}
+
 export const sprintApi = {
   // Sprint CRUD operations
   createSprint: async (sprintData: CreateSprintData): Promise<Sprint> => {
@@ -149,7 +156,7 @@ export const sprintApi = {
     try {
       const response = await api.delete(`/sprints/${sprintId}`);
 
-      const contentType = response.headers?.["content-type"] || "";
+      const contentType = getHeaderString(response.headers?.["content-type"]);
       const status = response.status;
 
       if (status === 204 || status === 200) {

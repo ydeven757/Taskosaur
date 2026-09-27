@@ -7,13 +7,19 @@ export class CryptoService {
   private readonly secretKey: Buffer;
 
   constructor() {
-    const encryptionKey = process.env.ENCRYPTION_KEY || 'default-key-for-development-only';
-    // scryptSync returns a Buffer, not a string
-    this.secretKey = crypto.scryptSync(encryptionKey, 'salt', 32);
+    const encryptionKey = process.env.ENCRYPTION_KEY;
 
-    if (!process.env.ENCRYPTION_KEY) {
+    if (!encryptionKey && process.env.NODE_ENV === 'production') {
+      throw new Error('ENCRYPTION_KEY is required in production');
+    }
+
+    const keyMaterial = encryptionKey || 'default-key-for-development-only';
+    // scryptSync returns a Buffer, not a string
+    this.secretKey = crypto.scryptSync(keyMaterial, 'salt', 32);
+
+    if (!encryptionKey) {
       console.warn(
-        'ENCRYPTION_KEY not found in environment variables. Using default key. Set ENCRYPTION_KEY for production.',
+        'ENCRYPTION_KEY not found in environment variables. Using default key. Set ENCRYPTION_KEY for development only.',
       );
     }
   }

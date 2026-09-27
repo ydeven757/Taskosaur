@@ -9,6 +9,13 @@ import {
   WorkflowStats,
 } from "@/types";
 
+function getHeaderString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.join(",");
+  }
+  return typeof value === "string" ? value : "";
+}
+
 export const workflowsApi = {
   // Workflow CRUD operations
   createWorkflow: async (workflowData: CreateWorkflowData): Promise<Workflow> => {
@@ -99,7 +106,7 @@ export const workflowsApi = {
       const response = await api.delete(`/workflows/${workflowId}`);
 
       // Handle different response types
-      const contentType = response.headers?.["content-type"] || "";
+      const contentType = getHeaderString(response.headers?.["content-type"]);
       const status = response.status;
 
       if (status === 204 || status === 200) {

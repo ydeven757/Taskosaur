@@ -82,7 +82,7 @@ export class BetterQueueQueueAdapter<T = any> implements IQueue<T> {
   private readonly failedJobs: BetterQueueJobAdapter<T>[] = [];
   private jobIdCounter = 1;
   private isPausedFlag = false;
-  private processor?: (job: IJob<T>) => Promise<any>;
+  private processor?: (job: IJob<T>) => unknown;
 
   constructor(
     public readonly name: string,
@@ -186,11 +186,15 @@ export class BetterQueueQueueAdapter<T = any> implements IQueue<T> {
       options,
     };
 
-    // Add to better-queue
-    // Note: Priority handling would require configuring a priority function in queue options
+    // Add to better-queue for compatibility with the underlying adapter, then
+    // drive the in-memory processing path ourselves. The custom store used for
+    // bundled/self-hosted fallback mode is intentionally minimal; explicit
+    // scheduling keeps worker behavior deterministic for both sync and async
+    // processors.
     this.queue.push(task);
 
     this.eventEmitter.emit(QueueEvent.JOB_ADDED, job);
+    this.scheduleProcessing(job);
     return Promise.resolve(job);
   }
 
@@ -256,6 +260,7 @@ export class BetterQueueQueueAdapter<T = any> implements IQueue<T> {
     this.queue.resume();
     this.isPausedFlag = false;
     this.eventEmitter.emit(QueueEvent.QUEUE_RESUMED);
+    this.processWaitingJobs();
     return Promise.resolve();
   }
 
@@ -350,7 +355,50 @@ export class BetterQueueQueueAdapter<T = any> implements IQueue<T> {
   /**
    * Set processor for this queue
    */
-  setProcessor(processor: (job: IJob<T>) => Promise<any>): void {
+  setProcessor(processor: (job: IJob<T>) => unknown): void {
     this.processor = processor;
+    this.processWaitingJobs();
+  }
+
+  private scheduleProcessing(job: BetterQueueJobAdapter<T>): void {
+    if (!this.processor || this.isPausedFlag) return;
+
+    setImmediate(() => {
+      void this.processJob(job);
+    });
+  }
+
+  private processWaitingJobs(): void {
+    if (!this.processor || this.isPausedFlag) return;
+
+    for (const job of this.jobs.values()) {
+      if (this.completedJobs.includes(job) || this.failedJobs.includes(job)) continue;
+      void job.getState().then((state) => {
+        if (state === JobStatus.WAITING) {
+          this.scheduleProcessing(job);
+        }
+      });
+    }
+  }
+
+  private async processJob(job: BetterQueueJobAdapter<T>): Promise<void> {
+    if (!this.processor || this.isPausedFlag) return;
+
+    const state = await job.getState();
+    if (state !== JobStatus.WAITING) return;
+
+    try {
+      job._markProcessing();
+      this.eventEmitter.emit(QueueEvent.JOB_STARTED, job);
+      const result = await this.processor(job);
+      job._markCompleted(result);
+      this.completedJobs.push(job);
+      this.eventEmitter.emit(QueueEvent.JOB_COMPLETED, job);
+    } catch (error) {
+      const normalized = error instanceof Error ? error : new Error(String(error));
+      job._markFailed(normalized);
+      this.failedJobs.push(job);
+      this.eventEmitter.emit(QueueEvent.JOB_FAILED, job, normalized);
+    }
   }
 }

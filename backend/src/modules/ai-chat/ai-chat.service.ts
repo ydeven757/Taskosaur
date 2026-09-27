@@ -827,6 +827,12 @@ Respond ONLY with the description text, nothing else.`;
     return privateIPv4Pattern.test(hostname);
   }
 
+  private privateNetworkAiEndpointsEnabled(): boolean {
+    return (
+      process.env.NODE_ENV !== 'production' || process.env.ALLOW_PRIVATE_AI_ENDPOINTS === 'true'
+    );
+  }
+
   validateApiUrl(apiUrl: string): string {
     let url: URL;
     try {
@@ -835,8 +841,16 @@ Respond ONLY with the description text, nothing else.`;
       throw new BadRequestException('Invalid URL format');
     }
 
+    const isPrivateEndpoint = this.isLocalhost(url.hostname) || this.isPrivateNetwork(url.hostname);
+
+    if (isPrivateEndpoint && !this.privateNetworkAiEndpointsEnabled()) {
+      throw new BadRequestException(
+        'Private-network AI API URLs are disabled in production. Set ALLOW_PRIVATE_AI_ENDPOINTS=true only for trusted self-hosted deployments.',
+      );
+    }
+
     // Allow HTTP for localhost and private networks (e.g., self-hosted Ollama)
-    const allowHttp = this.isLocalhost(url.hostname) || this.isPrivateNetwork(url.hostname);
+    const allowHttp = isPrivateEndpoint;
 
     if (url.protocol !== 'https:' && !allowHttp) {
       throw new BadRequestException(

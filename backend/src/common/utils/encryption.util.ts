@@ -1,12 +1,21 @@
 import * as crypto from 'crypto';
 
 const algorithm = 'aes-256-gcm';
-const encryptionKey = process.env.ENCRYPTION_KEY || 'default-key-for-development-only';
-const secretKey = crypto.scryptSync(encryptionKey, 'salt', 32);
+const encryptionKey = process.env.ENCRYPTION_KEY;
 
-if (!process.env.ENCRYPTION_KEY && process.env.NODE_ENV === 'production') {
+if (!encryptionKey && process.env.NODE_ENV === 'production') {
+  throw new Error('ENCRYPTION_KEY is required in production');
+}
+
+const secretKey = crypto.scryptSync(
+  encryptionKey || 'default-key-for-development-only',
+  'salt',
+  32,
+);
+
+if (!encryptionKey) {
   console.warn(
-    'ENCRYPTION_KEY not found in environment variables. Using default key. Set ENCRYPTION_KEY for production.',
+    'ENCRYPTION_KEY not found in environment variables. Using default key. Set ENCRYPTION_KEY for development only.',
   );
 }
 
